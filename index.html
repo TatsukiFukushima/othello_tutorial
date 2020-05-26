@@ -25,10 +25,13 @@
   <p id="view_turn"></p>
   <!- 初期化ボタン ->
   <button type="button" id="ban_init" onclick="ban_init()">やり直し</button>
+  <!- 手番変更ボタン ->
+  <button type="button" id="change_human_turn" onclick="change_human_turn()">手番を変更</button>
 
   <script type="text/javascript">
     var turn = 0 // ターン 1:黒、-1:白
     var human_turn = 1
+    var can_change_turn = true
     var ban_ar = new Array(8)
     for (var x = 0; x < ban_ar.length; x++){
       ban_ar[x] = new Array(8)
@@ -65,6 +68,14 @@
       }
     };
 
+    // 手番を変更する処理
+    function change_human_turn() {
+      if (can_change_turn) {
+        human_turn *= -1
+      }
+      can_change_turn = false
+    }
+
     // 盤面を初期化する処理
     function ban_init () {
       for (var x = 0; x < 8; x++) {
@@ -80,6 +91,8 @@
       ban_set()
 
       turn = 0
+      human_turn = 1
+      can_change_turn = true
       change_turn()
     };
 
@@ -114,6 +127,8 @@
         turn_msg.textContent = "黒の番です。"
         return
       }
+      // 着手が始まったら手番の入れ替えはできない。
+      can_change_turn = false
       // ターンを変更
       turn = turn * -1
 
