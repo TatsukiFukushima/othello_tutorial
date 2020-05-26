@@ -37,6 +37,16 @@
       ban_ar[x] = new Array(8)
     }
     var ban = document.getElementById('field')
+    var point_map = [
+      [16, 5,10, 9, 9,10, 5,16],
+      [ 5, 1, 7, 6, 6, 7, 1, 5],
+      [10, 7, 8, 8, 8, 8, 7,10],
+      [ 9, 6, 8, 8, 8, 8, 6, 9],
+      [ 9, 6, 8, 8, 8, 8, 6, 9],
+      [10, 7, 8, 8, 8, 8, 7,10],
+      [ 5, 1, 7, 6, 6, 7, 1, 5],
+      [16, 5,10, 9, 9,10, 5,16]
+    ]
     ban_new()
     ban_init()
 
@@ -49,7 +59,16 @@
             if (reverseResult[0]) {
               ban_ar = reverseResult[1]
               ban_set()
-              change_turn()
+              if (!change_turn()) {
+                for(var i=0; i<100; i++){ // コンピューターのターンが終わるまで
+                  if (turn == human_turn) {
+                    break;
+                  }
+                  ban_ar = calc_com_place(ban_ar, turn)
+                  ban_set()
+                  change_turn()
+                }
+              }
             }
           }
         }
@@ -68,12 +87,15 @@
       }
     };
 
-    // 手番を変更する処理
+    // 人間の手番を変更する処理
     function change_human_turn() {
       if (can_change_turn) {
         human_turn *= -1
       }
       can_change_turn = false
+      ban_ar = calc_com_place(ban_ar, turn)
+      ban_set()
+      change_turn()
     }
 
     // 盤面を初期化する処理
@@ -118,32 +140,25 @@
       return true
     };
 
-    // ターンを変更する処理
+    // ターンを変更する処理 ゲームが終わるかどうかのフラグを返す
     function change_turn () {
       var turn_msg = document.getElementById('view_turn')
       if(turn == 0){
-        // 0は最初として、メッセージのみで処理終了
         turn = 1
         turn_msg.textContent = "黒の番です。"
-        return
+        return false
       }
       // 着手が始まったら手番の入れ替えはできない。
       can_change_turn = false
       // ターンを変更
       turn = turn * -1
 
-      // ターンを交代して、置けるところがあるか確認する
-      var is_reverse = false
+      // 個数を集計して終了するか確認
       var white_count = 0
       var black_count = 0
       for (var x = 0; x < 8; x++) {
         for (var y = 0; y < 8; y++) {
           switch( ban_ar[x][y] ) {
-          case 0:
-            if (!is_reverse) {
-              is_reverse = check_reverse(ban_ar, turn, x, y)
-            }
-            break;
           case -1:
             white_count++
             break
@@ -154,7 +169,6 @@
         }
       }
 
-      // 白と黒の合計が8*8=64の場合は処理終了
       if (white_count + black_count == 64 || white_count == 0 || black_count == 0){
         if( white_count == black_count) {
           alert("勝負は引分です。")
@@ -162,20 +176,22 @@
           alert("勝負は、黒：" + black_count + "対、白：" + white_count + "で、白の勝ちです。")
         } else {
           alert("勝負は、黒："+ black_count + "対、白："+ white_count + "で、黒の勝ちです。")
-      }
-
+        }
+        return true
       } else {
-        // 置ける場所がない場合は、ターンを相手に戻す
-        if(!is_reverse){
+        // 置ける場所がない場合
+        if(!check_reverse_all(ban_ar, turn)){
           switch( turn ) {
           case -1:
             alert("白の置ける場所がありません。続けて黒の番となります。")
-            turn = turn * -1
-            break;
           case 1:
             alert("黒の置ける場所がありません。続けて白の番となります。")
-            turn = turn * -1
-            break;
+          }
+          turn *= -1
+          if(!check_reverse_all(ban_ar, turn)){
+            alert("両者置ける場所がありません。")
+            alert("勝負は、黒："+ black_count + "対、白："+ white_count + "で、黒の勝ちです。")
+            return true
           }
         }
       }
@@ -189,7 +205,20 @@
         turn_msg.textContent = "黒の番です。";
         break;
       }
+      return false
     };
+
+    // 盤面にターン側の石が置けるか確認
+    function check_reverse_all (ban_local, turn_local) {
+      for (var x = 0; x < 8; x++) {
+        for (var y = 0; y < 8; y++) {
+          if ( ban_local[x][y] == 0 && check_reverse(ban_local, turn_local, x, y)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
 
     // 指定したセルにターン側の石が置けるか確認
     function check_reverse (ban_local, turn_local, place_x, place_y) {
@@ -266,6 +295,47 @@
         ban_local[place_x][place_y] = turn_local
       }
       return ban_local
+    }
+
+    // コンピューターの手を計算
+    function calc_com_place(ban_local, turn_local) {
+      maxBan = new Array(8)
+      var maxPoint = -10000
+      var point = 0
+      for (var x = 0; x < 8; x++) {
+        for (var y = 0; y < 8; y++) {
+          if (ban_local[x][y] == 0) {
+            reverseResult = reverse(ban_local, turn_local, x, y);
+            if (reverseResult[0]) {
+              // point = calcPoint(reverseResult[1]) * turn_local
+              // if (point > maxPoint) {
+              //   maxPoint = point
+              //   maxBan = reverseResult[1]
+              // }
+              return reverseResult[1]
+            }
+          }
+        }
+      }
+      return maxBan
+    }
+
+    // 評価値を計算
+    function calcPoint(ban_local) {
+      point = 0
+      for (var x = 0; x < 8; x++) {
+        for (var y = 0; y < 8; y++) {
+          if (ban_local[x][y] == 0) {
+            if (check_reverse(ban_local, 1, x, y)) {
+              point += point_map[x][y]
+            }
+            if (check_reverse(ban_local, -1, x, y)) {
+              point -= point_map[x][y]
+            }
+          }
+        }
+      }
+      return point
     }
 
   </script>
