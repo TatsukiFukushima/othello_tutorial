@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<meta http-equiv="content-type" charset="utf-8">
+<html>
+<head>
+  <title>othello_tutorial</title>
+  <style type="text/css">
+    #field td {
+      border: 1px solid black;
+      width: 50px;
+      height: 50px;
+      background-color: green;
+      text-align: center;
+      vertical-align: middle;
+      table-layout: fixed;
+      padding: 1px 1px 1px 1px;
+      font-size: 33px;
+    }
+  </style>
+</head>
+
+<body>
+  <!- 盤面 ->
+  <table id="field"></table>
+  <!- ターンの表示 ->
+  <p id="view_turn"></p>
+  <!- 初期化ボタン ->
+  <button type="button" id="ban_init" onclick="ban_init()">やり直し</button>
+
+  <script type="text/javascript">
+    var turn = 0 // ターン 1:黒、-1:白
+    var human_turn = 1
+    var ban_ar = new Array(8)
+    for (var x = 0; x < ban_ar.length; x++){
+      ban_ar[x] = new Array(8)
+    }
+    var ban = document.getElementById('field')
+    ban_new()
+    ban_init()
+
+    for (var x = 0; x < 8; x++) {
+      for (var y = 0; y < 8; y++) {
+        var select_cell = ban.rows[x].cells[y];
+        select_cell.onclick = function() {
+          if (ban_ar[this.parentNode.rowIndex][this.cellIndex] == 0) {
+            var reverseResult = reverse(ban_ar, turn, this.parentNode.rowIndex, this.cellIndex)
+            if (reverseResult[0]) {
+              ban_ar = reverseResult[1]
+              ban_set()
+              change_turn()
+            }
+          }
+        }
+      }
+    }
+
+    // テーブルで盤面を作成する処理
+    function ban_new() {
+      for (var x = 0; x < 8; x++) {
+        var tr = document.createElement("tr")
+        ban.appendChild(tr)
+        for (var y = 0; y < 8; y++) {
+          var td = document.createElement("td")
+          tr.appendChild(td)
+        }
+      }
+    };
+
+    // 盤面を初期化する処理
+    function ban_init () {
+      for (var x = 0; x < 8; x++) {
+        for (var y = 0; y < 8; y++) {
+          ban_ar[x][y] = 0
+        }
+      }
+
+      ban_ar[3][3] = -1
+      ban_ar[4][3] = 1
+      ban_ar[3][4] = 1
+      ban_ar[4][4] = -1
+      ban_set()
+
+      turn = 0
+      change_turn()
+    };
+
+    // 盤面状況(配列)を実際の盤面へ反映させる処理
+    function ban_set () {
+      var stone = ""
+      for (var x = 0; x < 8; x++) {
+        for (var y = 0; y < 8; y++) {
+          switch( ban_ar[x][y] ) {
+          case 0:
+            stone = ""
+            break;
+          case -1:
+            stone = "○"
+            break;
+          case 1:
+            stone = "●"
+            break;
+          }
+          ban.rows[x].cells[y].innerText = stone;
+        }
+      }
+      return true
+    };
+
+    // ターンを変更する処理
+    function change_turn () {
+      var turn_msg = document.getElementById('view_turn')
+      if(turn == 0){
+        // 0は最初として、メッセージのみで処理終了
+        turn = 1
+        turn_msg.textContent = "黒の番です。"
+        return
+      }
+      // ターンを変更
+      turn = turn * -1
+
+      // ターンを交代して、置けるところがあるか確認する
+      var is_reverse = false
+      var white_count = 0
+      var black_count = 0
+      for (var x = 0; x < 8; x++) {
+        for (var y = 0; y < 8; y++) {
+          switch( ban_ar[x][y] ) {
+          case 0:
+            if (!is_reverse) {
+              is_reverse = check_reverse(ban_ar, turn, x, y)
+            }
+            break;
+          case -1:
+            white_count++
+            break
+          case 1:
+            black_count++
+            break
+          }
+        }
+      }
+
+      // 白と黒の合計が8*8=64の場合は処理終了
+      if (white_count + black_count == 64 || white_count == 0 || black_count == 0){
+        if( white_count == black_count) {
+          alert("勝負は引分です。")
+        } else if (white_count > black_count){
+          alert("勝負は、黒：" + black_count + "対、白：" + white_count + "で、白の勝ちです。")
+        } else {
+          alert("勝負は、黒："+ black_count + "対、白："+ white_count + "で、黒の勝ちです。")
+      }
+
+      } else {
+        // 置ける場所がない場合は、ターンを相手に戻す
+        if(!is_reverse){
+          switch( turn ) {
+          case -1:
+            alert("白の置ける場所がありません。続けて黒の番となります。")
+            turn = turn * -1
+            break;
+          case 1:
+            alert("黒の置ける場所がありません。続けて白の番となります。")
+            turn = turn * -1
+            break;
+          }
+        }
+      }
+
+      // ターンを表示する
+      switch( turn ) {
+        case -1:
+      turn_msg.textContent = "白の番です。";
+        break;
+      case 1:
+        turn_msg.textContent = "黒の番です。";
+        break;
+      }
+    };
+
+    // 指定したセルにターン側の石が置けるか確認
+    function check_reverse (ban_local, turn_local, place_x, place_y) {
+      checkResult = new Array(2)
+
+      // 各方向へリバース（x=0, y=0の場合は一瞬でfalse判定がされるので、場合分け不要）
+      for (var x = -1; x < 2; x++) {
+        for (var y = -1; y < 2; y++) {
+          checkResult = check_line_reverse(ban_local, turn_local, place_x, place_y, x, y)
+          if (checkResult[0]) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+
+    // 指定したセルからreverseを行う
+    function reverse (ban_local, turn_local, place_x, place_y) {
+      isReverse = false
+      checkResult = new Array(2)
+
+      // 各方向へリバース（x=0, y=0の場合は一瞬でfalse判定がされるので、場合分け不要）
+      for (var x = -1; x < 2; x++) {
+        for (var y = -1; y < 2; y++) {
+          checkResult = check_line_reverse(ban_local, turn_local, place_x, place_y, x, y)
+          if (checkResult[0]) {
+            isReverse = true
+            ban_local = line_reverse(ban_local, turn_local, place_x, place_y, x, y, checkResult[1])
+          }
+        }
+      }
+      if (isReverse) {
+        ban_local[place_x][place_y] = turn_local
+      }
+
+      return [isReverse, ban_local]
+    }
+
+    // 指定したセルから指定した方向へreverseできるかの確認
+    function check_line_reverse (ban_local, turn_local, place_x, place_y, add_x, add_y) {
+      var count = 0
+      while (true){
+        place_x += add_x
+        place_y += add_y
+
+        if(place_x < 0 || place_x > 7 || place_y < 0 || place_y > 7) {
+          return [false, 0];
+        }
+        // 移動先のセルに石がなかったら抜ける
+        if(ban_local[place_x][place_y] == 0) {
+          return [false, 0];
+        }
+        // 移動先のセルが自分自身であれば、石があった事を判定し抜ける
+        if(ban_local[place_x][place_y] == turn_local) {
+          break;
+        }
+        // 上記以外は相手の石
+        count++
+      }
+
+      if (count == 0) {
+        return [false, 0]
+      }
+
+      return [true, count]
+    }
+
+    // 指定したセルから指定した方向へreverseを行う
+    function line_reverse (ban_local, turn_local, place_x, place_y, add_x, add_y, count) {
+      for (var i = 0; i < count; i++) {
+        place_x += add_x
+        place_y += add_y
+        ban_local[place_x][place_y] = turn_local
+      }
+      return ban_local
+    }
+
+  </script>
+</body>
+</html>
