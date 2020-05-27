@@ -312,7 +312,7 @@
 
     // コンピューターの手を計算
     function calc_com_place(ban_local, turn_local, current_depth) {
-      maxBan = new Array(8)
+      var maxBan = new Array(8)
       var maxPoint = -10000
       var point = 0
       for (var x = 0; x < 8; x++) {
@@ -330,21 +330,21 @@
               var ban_calc = new Array(8)
               if (current_depth == depth) {
                 for (var i=0; i<8; i++) {
-                  ban_calc[i] = reverseResult[1][i].slice()
+                  ban_line_calc = reverseResult[1][i].slice()
+                  ban_calc[i] = ban_line_calc
                 }
                 point = calcPoint(reverseResult[1]) * turn_local
               } else {
-                calcResult = calc_com_place(ban_copy, turn_local*-1, current_depth+1)
+                calcResult = calc_com_place(reverseResult[1], turn_local*-1, current_depth+1)
                 for (var i=0; i<8; i++) {
                   ban_calc[i] = reverseResult[1][i].slice()
                 }
                 point = calcResult[1]
               }
               if (point > maxPoint) {
-                console.log("採用されました↓ 深さは" + current_depth)
-                console.log(ban_calc)
                 for (var i=0; i<8; i++) {
-                  maxBan[i] = ban_calc[i].slice()
+                  ban_line_calc = ban_calc[i].slice()
+                  maxBan[i] = ban_line_calc
                 }
                 maxPoint = point
               }
@@ -352,9 +352,6 @@
           }
         }
       }
-      console.log("評価値最大のBanは、")
-      console.log(maxBan)
-      console.log("ちなみに深さは" + current_depth + "、評価は" + maxPoint)
       return [maxBan, maxPoint]
     }
 
